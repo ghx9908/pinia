@@ -8,8 +8,6 @@
 <script setup>
 import { useCounterStore } from "./stores/counter"
 const counter = useCounterStore()
-counter.count++
-const a = 1
 </script>
 
 <style scoped></style>
