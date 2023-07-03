@@ -61,6 +61,7 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
 function createOptionStore(id, options, pinia) {
   const store = reactive({}) //创建响应式的store
   let scope
+  //处理action 修改this指向
   function wrapAction(action) {
     return function (...args) {
       let result = action.call(store, ...args)
@@ -71,8 +72,15 @@ function createOptionStore(id, options, pinia) {
   function setup() {
     // 根据用户的状态将其保存到pinia中
     pinia.state.value[id] = state ? state() : {}
-    const localState = pinia.state.value[id]
-    return Object.assign(localState, actions)
+    const localState =  toRefs(pinia.state.value[id])
+    return Object.assign(localState, actions,
+      Object.keys(getters).reduce((gettersObj,getterName) => {
+        gettersObj[getterName] = computed(()=>{
+          return getters[getterName].call(store)
+        })
+        return gettersObj
+      },{})
+      )
   }
   //划分父子作用域
   const setupStore = pinia._e.run(() => {
