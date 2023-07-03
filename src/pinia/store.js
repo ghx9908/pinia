@@ -1,5 +1,12 @@
-import { inject, hasInjectionContext } from "vue"
-import { piniaSymbol } from "./rootStore/piniaSymbol"
+import {
+  inject,
+  hasInjectionContext,
+  effectScope,
+  toRefs,
+  computed,
+  reactive,
+} from "vue"
+import { piniaSymbol } from "./rootStore"
 
 // id + options
 // options ={id:''}
@@ -29,10 +36,11 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
     // 判断是否存在pinia上下文环境
     const hasContext = hasInjectionContext()
     // 从context中读取 pinia 实例
+    // 只能在组件中使用
     const pinia = hasContext && inject(piniaSymbol)
     // 如果该store尚未创建
     if (!pinia._s.has(id)) {
-      // 根据情况创建store
+      // 根据情况创建store,存储到_s中
       if (isSetupStore) {
         // createSetupStore(id, setup, pinia)
       } else {
@@ -47,4 +55,25 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
   useStore.$id = id
   // 返回useStore函数
   return useStore
+}
+
+// optionsapi
+function createOptionStore(id, options, pinia) {
+  const store = reactive({}) //创建响应式的store
+  let scope
+  const { state, getters = {}, actions = {} } = options
+  function setup() {
+    // 根据用户的状态将其保存到pinia中
+    pinia.state.value[id] = state ? state() : {}
+    const localState = pinia.state.value[id]
+    return localState
+  }
+  //划分父子作用域
+  const setupStore = pinia._e.run(() => {
+    scope = effectScope()
+    return scope.run(() => setup())
+  })
+
+  Object.assign(store, setupStore)
+  pinia._s.set(id, store)
 }

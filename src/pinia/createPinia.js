@@ -1,4 +1,4 @@
-import { ref, effectScope, hasInjectionContext } from "vue"
+import { ref, effectScope } from "vue"
 import { piniaSymbol } from "./rootStore"
 export function createPinia() {
   const scope = effectScope()
@@ -17,7 +17,8 @@ export function createPinia() {
       //  使用插件
     },
     _a: null,
-    _e: scope, // 当前作用于
+    _e: scope, // 当前作用域
     _s: new Map(), // 记录有哪些store的
   }
+  return pinia
 }
