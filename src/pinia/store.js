@@ -42,9 +42,9 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
     if (!pinia._s.has(id)) {
       // 根据情况创建store,存储到_s中
       if (isSetupStore) {
-        createSetupStore(id, setup, pinia) // 创建setupStore
+        createSetupStore(id, setup, {}, pinia, true) // 创建setupStore
       } else {
-        createOptionsStore(id, options, pinia) // 创建选项store
+        createOptionsStore(id, options, pinia, false) // 创建选项store
       }
     }
     // 取出已创建的store返回
@@ -58,7 +58,7 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
 }
 
 // optionsapi
-function createOptionsStore(id, options, pinia) {
+function createOptionsStore(id, options, pinia, isSetupStore) {
   let store
   const { state, getters = {}, actions = {} } = options
   function setup() {
@@ -76,13 +76,12 @@ function createOptionsStore(id, options, pinia) {
       }, {})
     )
   }
-  store = createSetupStore(id, setup, pinia)
+  store = createSetupStore(id, setup, options, pinia, isSetupStore)
   return store
 }
 
-function createSetupStore($id, setup, pinia) {
+function createSetupStore($id, setup, options, pinia, isSetupStore) {
   let scope
-  const store = reactive({}) // 创建一个store， 核心就是 reactive({})
   //处理action 修改this指向
   function wrapAction(name, action) {
     return function (...args) {
@@ -90,6 +89,30 @@ function createSetupStore($id, setup, pinia) {
       return ret
     }
   }
+
+  const $reset = !isSetupStore
+    ? function $reset(store) {
+        const { state } = options
+        const newState = state ? state() : {}
+        console.log("newState=>", newState)
+        // we use a patch to group all changes into one single subscription
+        // store.$patch(($state) => {
+        //   Object.assign($state, newState)
+        // })
+      }
+    : () => {
+        throw new Error(
+          `🍍: Store "${$id}" is built using the setup syntax and does not implement $reset().`
+        )
+      }
+  const partialStore = {
+    _p: pinia,
+    // _s: scope,
+    $id,
+    $reset,
+  }
+
+  let store = reactive(partialStore)
   const setupStore = pinia._e.run(() => {
     scope = effectScope() // 需要开辟一个空间，来管理此store中的数据
     return scope.run(() => setup()) // 这个setup方法就是用来初始化store中的状态的
