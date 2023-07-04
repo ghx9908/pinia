@@ -18,8 +18,20 @@ function reset() {
   store.$reset()
 }
 
-store.$subscribe((mutation, state) => {
-  console.log(mutation, state)
+// store.$subscribe((mutation, state) => {
+//   console.log(mutation, state)
+// })
+
+store.$onAction(({ after, onError, name }) => {
+  console.log("action running~~~", name)
+  after((result) => {
+    // action执行完毕后触发
+    console.log(result)
+  })
+  onError((err) => {
+    // action出错时调用
+    console.warn("error", err)
+  })
 })
 </script>
 

@@ -10,6 +10,7 @@ import {
   watch,
 } from "vue"
 import { piniaSymbol } from "./rootStore"
+import { addSubscription, triggerSubscriptions } from "./subscriptions"
 export function isPlainObject(o) {
   return (
     o &&
@@ -124,13 +125,43 @@ function createOptionsStore(id, options, pinia, isSetupStore) {
 
 function createSetupStore($id, setup, options, pinia, isSetupStore) {
   let scope
+  let actionSubscriptions = []
   //处理action 修改this指向
   function wrapAction(name, action) {
-    return function (...args) {
-      let ret = action.call(store, ...args)
+    // increment,action
+    return function () {
+      const afterCallbackList = [] // afterList
+      const onErrorCallbackList = [] // errList
+      function after(callback) {
+        afterCallbackList.push(callback)
+      }
+      function onError(callback) {
+        onErrorCallbackList.push(callback)
+      }
+      triggerSubscriptions(actionSubscriptions, { name, store, after, onError })
+      let ret
+      try {
+        ret = action.apply(this, arguments) // 让this指向store
+      } catch (error) {
+        triggerSubscriptions(onErrorCallbackList, error)
+      }
+      if (ret instanceof Promise) {
+        // 返回值是promise
+        return ret
+          .then((value) => {
+            triggerSubscriptions(afterCallbackList, value)
+            return value // 成功后触发after
+          })
+          .catch((error) => {
+            // 失败则触发error
+            triggerSubscriptions(onErrorCallbackList, error)
+            return Promise.reject(error)
+          })
+      }
       return ret
     }
   }
+
   const $patch = function $patch(partialStateOrMutator) {
     if (typeof partialStateOrMutator === "function") {
       partialStateOrMutator(pinia.state.value[$id])
@@ -171,6 +202,7 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
         )
       )
     },
+    $onAction: addSubscription.bind(null, actionSubscriptions), // 绑定action
   }
 
   let store = reactive(partialStore)
