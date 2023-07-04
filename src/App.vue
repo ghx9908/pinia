@@ -7,8 +7,8 @@
 </template>
 
 <script setup>
-// import { storeToRefs } from "./pinia"
-import { storeToRefs } from "pinia"
+import { storeToRefs } from "./pinia"
+// import { storeToRefs } from "pinia"
 import { useCounterStore } from "./stores/counter"
 const store = useCounterStore()
 const { increment, decrement } = store
