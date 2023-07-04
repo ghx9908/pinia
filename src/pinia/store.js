@@ -7,6 +7,7 @@ import {
   isRef,
   reactive,
   isReactive,
+  watch,
 } from "vue"
 import { piniaSymbol } from "./rootStore"
 export function isPlainObject(o) {
@@ -158,6 +159,18 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
     $id,
     $reset,
     $patch,
+
+    $subscribe(callback, options = {}) {
+      scope.run(() =>
+        watch(
+          pinia.state.value[$id],
+          (state) => {
+            callback({ storeId: $id }, state)
+          },
+          options
+        )
+      )
+    },
   }
 
   let store = reactive(partialStore)

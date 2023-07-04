@@ -17,6 +17,10 @@ const { count, double } = storeToRefs(store)
 function reset() {
   store.$reset()
 }
+
+store.$subscribe((mutation, state) => {
+  console.log(mutation, state)
+})
 </script>
 
 <style scoped></style>
