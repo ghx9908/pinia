@@ -1,12 +1,12 @@
 // stores/counter.js
-import { defineStore } from "../pinia"
-// import { defineStore } from "pinia"
+// import { defineStore } from "../pinia"
+import { defineStore } from "pinia"
 import { ref, computed } from "vue"
 export const useCounterStore = defineStore("counter", {
   state: () => {
     return { count: 0 }
   },
-
+  persist: true,
   actions: {
     increment() {
       this.count++
