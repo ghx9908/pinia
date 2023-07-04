@@ -203,6 +203,11 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
       )
     },
     $onAction: addSubscription.bind(null, actionSubscriptions), // 绑定action
+    $dispose() {
+      scope.stop() // 停用store
+      actionSubscriptions = []
+      pinia._s.delete($id)
+    },
   }
 
   let store = reactive(partialStore)
