@@ -175,6 +175,15 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
     }
   }
   Object.assign(store, setupStore) // 合并选项
+
+  Object.defineProperty(store, "$state", {
+    get: () => pinia.state.value[$id],
+    set: (state) => {
+      $patch(($state) => {
+        Object.assign($state, state)
+      })
+    },
+  })
   pinia._s.set($id, store) // 放入到容器中
   return store
 }
