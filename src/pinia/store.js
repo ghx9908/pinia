@@ -42,9 +42,9 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
     if (!pinia._s.has(id)) {
       // 根据情况创建store,存储到_s中
       if (isSetupStore) {
-        // createSetupStore(id, setup, pinia)
+        createSetupStore(id, setup, pinia) // 创建setupStore
       } else {
-        createOptionStore(id, options, pinia)
+        createOptionsStore(id, options, pinia) // 创建选项store
       }
     }
     // 取出已创建的store返回
@@ -58,43 +58,52 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
 }
 
 // optionsapi
-function createOptionStore(id, options, pinia) {
-  const store = reactive({}) //创建响应式的store
-  let scope
-  //处理action 修改this指向
-  function wrapAction(action) {
-    return function (...args) {
-      let result = action.call(store, ...args)
-      return result
-    }
-  }
+function createOptionsStore(id, options, pinia) {
+  let store
   const { state, getters = {}, actions = {} } = options
   function setup() {
     // 根据用户的状态将其保存到pinia中
     pinia.state.value[id] = state ? state() : {}
-    const localState =  toRefs(pinia.state.value[id])
-    return Object.assign(localState, actions,
-      Object.keys(getters).reduce((gettersObj,getterName) => {
-        gettersObj[getterName] = computed(()=>{
+    const localState = toRefs(pinia.state.value[id])
+    return Object.assign(
+      localState,
+      actions,
+      Object.keys(getters).reduce((gettersObj, getterName) => {
+        gettersObj[getterName] = computed(() => {
           return getters[getterName].call(store)
         })
         return gettersObj
-      },{})
-      )
+      }, {})
+    )
   }
-  //划分父子作用域
-  const setupStore = pinia._e.run(() => {
-    scope = effectScope()
-    return scope.run(() => setup())
-  })
-  for (let key in setupStore) {
-    const v = setupStore[key]
-    if (typeof v === "function") {
-      setupStore[key] = wrapAction(v)
+  store = createSetupStore(id, setup, pinia)
+  return store
+}
+
+function createSetupStore($id, setup, pinia) {
+  let scope
+  const store = reactive({}) // 创建一个store， 核心就是 reactive({})
+  //处理action 修改this指向
+  function wrapAction(name, action) {
+    return function (...args) {
+      let ret = action.call(store, ...args)
+      return ret
     }
   }
+  const setupStore = pinia._e.run(() => {
+    scope = effectScope() // 需要开辟一个空间，来管理此store中的数据
+    return scope.run(() => setup()) // 这个setup方法就是用来初始化store中的状态的
+  })
+  //overwrite existing actions to support $onAction
+  for (const key in setupStore) {
+    const prop = setupStore[key]
 
-  Object.assign(store, setupStore)
-  console.log("store=>", store)
-  pinia._s.set(id, store)
+    if (typeof prop === "function") {
+      // 对action进行一次包装
+      setupStore[key] = wrapAction(key, prop)
+    }
+  }
+  Object.assign(store, setupStore) // 合并选项
+  pinia._s.set($id, store) // 放入到容器中
+  return store
 }
