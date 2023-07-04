@@ -11,6 +11,7 @@ import {
 } from "vue"
 import { piniaSymbol } from "./rootStore"
 import { addSubscription, triggerSubscriptions } from "./subscriptions"
+import { setActivePinia, activePinia } from "./createPinia"
 export function isPlainObject(o) {
   return (
     o &&
@@ -80,7 +81,9 @@ export function defineStore(idOrOptions, setup, setupOptions = {}) {
     const hasContext = hasInjectionContext()
     // 从context中读取 pinia 实例
     // 只能在组件中使用
-    const pinia = hasContext && inject(piniaSymbol)
+    let pinia = hasContext && inject(piniaSymbol)
+    if (pinia) setActivePinia(pinia)
+    pinia = activePinia
     // 如果该store尚未创建
     if (!pinia._s.has(id)) {
       // 根据情况创建store,存储到_s中
@@ -234,6 +237,13 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
       })
     },
   })
+  pinia._p.forEach((extender) => {
+    Object.assign(
+      store,
+      scope.run(() => extender({ store, app: pinia._a, pinia }))
+    )
+  })
+
   pinia._s.set($id, store) // 放入到容器中
   return store
 }
