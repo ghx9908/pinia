@@ -4,9 +4,50 @@ import {
   effectScope,
   toRefs,
   computed,
+  isRef,
   reactive,
+  isReactive,
 } from "vue"
 import { piniaSymbol } from "./rootStore"
+export function isPlainObject(o) {
+  return (
+    o &&
+    typeof o === "object" &&
+    Object.prototype.toString.call(o) === "[object Object]" &&
+    typeof o.toJSON !== "function"
+  )
+}
+function mergeReactiveObjects(target, patchToApply) {
+  // Handle Map instances
+  if (target instanceof Map && patchToApply instanceof Map) {
+    patchToApply.forEach((value, key) => target.set(key, value))
+  }
+  // Handle Set instances
+  if (target instanceof Set && patchToApply instanceof Set) {
+    patchToApply.forEach(target.add, target)
+  }
+
+  // no need to go through symbols because they cannot be serialized anyway
+  for (const key in patchToApply) {
+    if (!patchToApply.hasOwnProperty(key)) continue
+
+    const subPatch = patchToApply[key]
+    const targetValue = target[key]
+    if (
+      isPlainObject(targetValue) &&
+      isPlainObject(subPatch) &&
+      target.hasOwnProperty(key) &&
+      !isRef(subPatch) &&
+      !isReactive(subPatch)
+    ) {
+      target[key] = mergeReactiveObjects(targetValue, subPatch)
+    } else {
+      target[key] = subPatch
+    }
+  }
+
+  return target
+}
 
 // id + options
 // options ={id:''}
@@ -89,16 +130,22 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
       return ret
     }
   }
-
+  const $patch = function $patch(partialStateOrMutator) {
+    if (typeof partialStateOrMutator === "function") {
+      partialStateOrMutator(pinia.state.value[$id])
+    } else {
+      mergeReactiveObjects(pinia.state.value[$id], partialStateOrMutator)
+    }
+  }
   const $reset = !isSetupStore
-    ? function $reset(store) {
+    ? function $reset() {
         const { state } = options
         const newState = state ? state() : {}
         console.log("newState=>", newState)
         // we use a patch to group all changes into one single subscription
-        // store.$patch(($state) => {
-        //   Object.assign($state, newState)
-        // })
+        this.$patch(($state) => {
+          Object.assign($state, newState)
+        })
       }
     : () => {
         throw new Error(
@@ -110,6 +157,7 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
     // _s: scope,
     $id,
     $reset,
+    $patch,
   }
 
   let store = reactive(partialStore)
