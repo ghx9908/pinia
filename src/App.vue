@@ -33,6 +33,12 @@ function reset() {
 //     console.warn("error", err)
 //   })
 // })
+const a = 1
+let b = 324
+const csdf = "xc"
+function ccc(){
+    let a = 12
+}
 </script>
 
 <style scoped></style>
