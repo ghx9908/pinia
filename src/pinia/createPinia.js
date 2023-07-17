@@ -20,10 +20,10 @@ export function createPinia() {
     use(plugin) {
       //  使用插件
       _p.push(plugin)
-      return this
+      return this //可以链式调用
     },
-    _p,
-    _a: null,
+    _p, //记录使用的插件
+    _a: null, //记录当前的app
     _e: scope, // 当前作用域
     _s: new Map(), // 记录有哪些store的
   }

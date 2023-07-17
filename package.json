@@ -24,8 +24,5 @@
     "lint-staged": ">=10",
     "mrm": "^4.1.17",
     "vite": "^4.3.9"
-  },
-  "lint-staged": {
-    "*.js": "eslint --cache --fix"
   }
 }

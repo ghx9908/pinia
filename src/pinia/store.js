@@ -12,6 +12,9 @@ import {
 import { piniaSymbol } from "./rootStore"
 import { addSubscription, triggerSubscriptions } from "./subscriptions"
 import { setActivePinia, activePinia } from "./createPinia"
+function isComputed(o) {
+  return !!(isRef(o) && o.effect)
+}
 export function isPlainObject(o) {
   return (
     o &&
@@ -129,6 +132,9 @@ function createOptionsStore(id, options, pinia, isSetupStore) {
 function createSetupStore($id, setup, options, pinia, isSetupStore) {
   let scope
   let actionSubscriptions = []
+  if (isSetupStore) {
+    pinia.state.value[$id] = {}
+  }
   //处理action 修改this指向
   function wrapAction(name, action) {
     // increment,action
@@ -221,8 +227,11 @@ function createSetupStore($id, setup, options, pinia, isSetupStore) {
   //overwrite existing actions to support $onAction
   for (const key in setupStore) {
     const prop = setupStore[key]
-
-    if (typeof prop === "function") {
+    if ((isRef(prop) && !isComputed(prop)) || isReactive(prop)) {
+      if (isSetupStore) {
+        pinia.state.value[$id][key] = prop
+      }
+    } else if (typeof prop === "function") {
       // 对action进行一次包装
       setupStore[key] = wrapAction(key, prop)
     }
